@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use decent::{PrimitiveRepr, Version};
 use proc_macro::TokenStream as RustTokenStream;
 use proc_macro2::TokenStream;
-use quote::{ToTokens, quote};
+use quote::quote;
 use syn::{
     Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, Ident, LitInt, parse::ParseStream,
     parse_macro_input, spanned::Spanned, token::Comma,
@@ -42,7 +42,7 @@ fn parse_integer_type(stream: ParseStream) -> syn::Result<Option<String>> {
     }
 }
 
-fn get_field_attribute_modifications(
+fn get_decode_field_attribute_modifications(
     field_accessor: Option<&TokenStream>,
     field_attributes: &[Attribute],
 ) -> syn::Result<(TokenStream, bool, bool)> {
@@ -56,7 +56,9 @@ fn get_field_attribute_modifications(
     for attribute in field_attributes {
         let attr = attribute.path().segments.last().unwrap().ident.to_string();
         match &attr[..] {
-            "since" if seen_attributes.contains(&"since") => panic!("attribute `since` already exists"),
+            "since" if seen_attributes.contains(&"since") => {
+                panic!("attribute `since` already exists")
+            }
             "since" => {
                 seen_attributes.insert("since");
                 let Version(major, minor, patch) = attribute.parse_args_with(parse_version)?;
@@ -66,13 +68,15 @@ fn get_field_attribute_modifications(
                     use_field &= version >= Version(#major, #minor, #patch);
                 };
             }
-            _ => {},
+            _ => {}
         }
     }
     for attribute in field_attributes {
         let attr = attribute.path().segments.last().unwrap().ident.to_string();
         match &attr[..] {
-            "override_repr" if seen_attributes.contains(&"override_repr") => panic!("attribute `override_repr` already exists"),
+            "override_repr" if seen_attributes.contains(&"override_repr") => {
+                panic!("attribute `override_repr` already exists")
+            }
             "override_repr" => {
                 seen_attributes.insert("override_repr");
                 let new_repr = match attribute.parse_args_with(parse_primitive_repr).unwrap() {
@@ -87,13 +91,15 @@ fn get_field_attribute_modifications(
                     let primitive_repr = decent::PrimitiveRepr::#new_repr;
                 };
             }
-            _ => {},
+            _ => {}
         }
     }
     for attribute in field_attributes {
         let attr = attribute.path().segments.last().unwrap().ident.to_string();
         match &attr[..] {
-            "version" if seen_attributes.contains(&"version") => panic!("attribute `version` already exists"),
+            "version" if seen_attributes.contains(&"version") => {
+                panic!("attribute `version` already exists")
+            }
             "version" => {
                 seen_attributes.insert("version");
                 if usage_is_conditional {
@@ -131,7 +137,7 @@ fn create_struct_encode_body(data_struct: &DataStruct) -> syn::Result<TokenStrea
         .parse::<TokenStream>()
         .unwrap();
 
-        let modifications = get_field_attribute_modifications(Some(&accessor), &field.attrs)?.0;
+        let modifications = get_decode_field_attribute_modifications(Some(&accessor), &field.attrs)?.0;
         encode_body = quote! {
             #encode_body
             {
@@ -184,7 +190,7 @@ fn create_enum_encode_body(
         for (field_index, field) in variant.fields.iter().enumerate() {
             let field_binding = format!("__self_{field_index}").parse::<TokenStream>()?;
             let modifications =
-                get_field_attribute_modifications(Some(&quote! { *#field_binding }), &field.attrs)?
+                get_decode_field_attribute_modifications(Some(&quote! { *#field_binding }), &field.attrs)?
                     .0;
             variant_encode_body = quote! {
                 #variant_encode_body
@@ -216,7 +222,7 @@ fn create_struct_decode_body(data_struct: &DataStruct) -> syn::Result<TokenStrea
         let field_name = &field.ident;
 
         let (modifications, decode_is_conditional, version_overridden) =
-            get_field_attribute_modifications(None, &field.attrs)?;
+            get_decode_field_attribute_modifications(None, &field.attrs)?;
 
         let mut value = if version_overridden {
             quote! { version }
@@ -272,7 +278,7 @@ fn create_enum_decode_body(
                     let field_type = &field.ty;
                     let field_name = &field.ident;
                     let (modifications, usage_is_conditional, version_overridden) =
-                        get_field_attribute_modifications(None, &field.attrs)?;
+                        get_decode_field_attribute_modifications(None, &field.attrs)?;
 
                     let mut value = if version_overridden {
                         quote! { version }
@@ -280,7 +286,7 @@ fn create_enum_decode_body(
                         quote! { <#field_type as Decodable>::decode(from, version, primitive_repr)? }
                     };
 
-                    if usage_is_conditional {
+                    if usage_is_conditional || true {
                         value = quote! {
                             if use_field {
                                 #value
@@ -301,9 +307,28 @@ fn create_enum_decode_body(
                 let mut field_decoders = quote! {};
                 for field in &fields.unnamed {
                     let field_type = &field.ty;
+                    let (modifications, usage_is_conditional, version_overridden) =
+                        get_decode_field_attribute_modifications(None, &field.attrs)?;
+
+                    let mut value = if version_overridden {
+                        quote! { version }
+                    } else {
+                        quote! { <#field_type as Decodable>::decode(from, version, primitive_repr)? }
+                    };
+
+                    if usage_is_conditional || true {
+                        value = quote! {
+                            if use_field {
+                                #value
+                            } else {
+                                Default::default()
+                            }
+                        };
+                    }
+
                     field_decoders = quote! {
                         #field_decoders
-                        <#field_type as Decodable>::decode(from, version, primitive_repr)?,
+                        { #modifications #value },
                     };
                 }
                 arm = quote! { #index => { Ok(Self::#variant_name(#field_decoders)) } };

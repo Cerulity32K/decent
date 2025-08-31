@@ -1,11 +1,17 @@
-[package]
-name = "decent"
-version = "0.1.0"
+[workspace]
+members = [
+    "decent",
+    "decent-macros",
+]
+resolver = "3"
+
+[workspace.package]
 edition = "2024"
 
-[dependencies]
-num = "0.4.3"
+[workspace.dependencies.decent]
+version = "0.1.0"
+path = "decent"
 
-[features]
-default = ["platform_dependent"]
-platform_dependent = []
+[workspace.dependencies.decent-macros]
+version = "0.1.0"
+path = "decent-macros"

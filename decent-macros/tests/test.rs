@@ -56,9 +56,15 @@ fn round_trip<T: Encodable + Decodable + PartialEq + Debug>(
     repr: PrimitiveRepr,
 ) {
     let mut destination = vec![];
-    source.encode(&mut destination, version, repr).expect("encode failed");
-    let decoded = T::decode(&mut &destination[..], version, repr).expect(&format!("decode failed from {destination:?}"));
-    assert_eq!(source, decoded, "round trip encode/decode failed, bytes encoded were {destination:?}")
+    source
+        .encode(&mut destination, version, repr)
+        .expect("encode failed");
+    let decoded = T::decode(&mut &destination[..], version, repr)
+        .expect(&format!("decode failed from {destination:?}"));
+    assert_eq!(
+        source, decoded,
+        "round trip encode/decode failed, bytes encoded were {destination:?}"
+    )
 }
 fn round_trip_with_size<T: Encodable + Decodable + PartialEq + Debug>(
     source: T,
@@ -69,8 +75,12 @@ fn round_trip_with_size<T: Encodable + Decodable + PartialEq + Debug>(
     let mut destination = vec![];
     source.encode(&mut destination, version, repr).unwrap();
     assert_eq!(destination.len(), byte_count);
-    let decoded = T::decode(&mut &destination[..], version, repr).unwrap();
-    assert_eq!(source, decoded, "round trip encode/decode failed, bytes encoded were {destination:?}")
+    let decoded = T::decode(&mut &destination[..], version, repr)
+        .expect(&format!("decode failed from {destination:?}"));
+    assert_eq!(
+        source, decoded,
+        "round trip encode/decode failed, bytes encoded were {destination:?}"
+    )
 }
 #[test]
 fn unit() {
@@ -154,4 +164,21 @@ fn versions() {
         PrimitiveRepr::Native,
         28,
     );
+}
+
+#[test]
+fn enums() {
+    for variant in [
+        TestEnum::Testa(0),
+        TestEnum::Testa2(Version(1, 0, 0)),
+        TestEnum::Testa3(),
+        TestEnum::Testb { asdf: 0 },
+        TestEnum::Testb2 {
+            test: Version(2, 3, 4),
+        },
+        TestEnum::Testb3 {},
+    ] {
+        println!("{variant:?}");
+        round_trip(variant, Version::ZERO, PrimitiveRepr::Varint);
+    }
 }
