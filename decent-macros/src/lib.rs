@@ -20,11 +20,11 @@ fn parse_version(stream: ParseStream) -> syn::Result<Version> {
 }
 
 fn parse_primitive_repr(stream: ParseStream) -> syn::Result<PrimitiveRepr> {
-    match &stream.parse::<Ident>()?.to_string()[..] {
-        "be" | "big_endian" | "BigEndian" => Ok(PrimitiveRepr::BigEndian),
-        "le" | "little_endian" | "LittleEndian" => Ok(PrimitiveRepr::LittleEndian),
-        "ne" | "native" | "native_endian" | "Native" | "NativeEndian" => Ok(PrimitiveRepr::Native),
-        "varint" | "Varint" => Ok(PrimitiveRepr::Varint),
+    match &stream.parse::<Ident>()?.to_string().to_lowercase()[..] {
+        "be" | "big" | "big_endian" | "bigendian" => Ok(PrimitiveRepr::BigEndian),
+        "le" | "little" | "little_endian" | "littleendian" => Ok(PrimitiveRepr::LittleEndian),
+        "ne" | "native" | "native_endian" | "nativeendian" => Ok(PrimitiveRepr::Native),
+        "var" | "varint" => Ok(PrimitiveRepr::Varint),
         other => Err(stream.error(format!("Unknown repr `{other}`"))),
     }
 }

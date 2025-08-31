@@ -34,6 +34,14 @@ The `#[version]` attribute will override the passed-in `version` parameter for s
 ### Conditional Encoding
 Fields of structures can be conditionally encoded with the `#[since]` attribute. This takes in three parameters, being the major, minor, and patch version numbers. If the version passed by the `version` parameter (or overriden by the `#[version]` attribute) is equal to or greater than `#[since]`'s attribute, the field will be encoded. Otherwise, it will be skipped, and a `Default` value will take its place.
 
+### Fixed Representation
+You can set the primitive representation for a field with the `#[override_repr]` attribute, which sets a fixed representation for the attributed field given an identifier argument. The argument is case-insensitively matched against the following strings to set the representation (casing for clarity):
+
+    be | big | big_endian | BigEndian => BigEndian
+    le | little | little_endian | LittleEndian => LittleEndian
+    ne | native | native_endian | NativeEndian => Native
+    var | Varint => Varint
+
 # Default Implementations
 Many types have implementations for `Encodable` and `Decodable`. The implementations can be found in the `impls` module. Some notes:
 - Standard collections are encoded with their length (given by their `ExactSizeIterator` implementations), followed by their items.
