@@ -45,8 +45,8 @@ macro_rules! impl_uint_binary {
     (for $($type:ty),*) => {
         $(
             impl Encodable for $type {
-                fn encode(&self, to: &mut dyn Write, _: Version, int_repr: PrimitiveRepr) -> io::Result<()> {
-                    match int_repr {
+                fn encode(&self, to: &mut dyn Write, _: Version, primitive_repr: PrimitiveRepr) -> io::Result<()> {
+                    match primitive_repr {
                         PrimitiveRepr::BigEndian => to.write_all(&self.to_be_bytes()),
                         PrimitiveRepr::LittleEndian => to.write_all(&self.to_le_bytes()),
                         PrimitiveRepr::Native => to.write_all(&self.to_ne_bytes()),
@@ -55,15 +55,15 @@ macro_rules! impl_uint_binary {
                 }
             }
             impl Decodable for $type {
-                fn decode(from: &mut dyn Read, _: Version, int_repr: PrimitiveRepr) -> io::Result<Self> {
-                    if let PrimitiveRepr::Varint = int_repr {
+                fn decode(from: &mut dyn Read, _: Version, primitive_repr: PrimitiveRepr) -> io::Result<Self> {
+                    if let PrimitiveRepr::Varint = primitive_repr {
                         return read_varuint(from).and_then(|int| {
                             Self::try_from(int).map_err(|err| io::Error::new(ErrorKind::InvalidData, err))
                         });
                     }
                     let mut buf = [0u8; size_of::<Self>()];
                     from.read_exact(&mut buf)?;
-                    match int_repr {
+                    match primitive_repr {
                         PrimitiveRepr::BigEndian => Ok(Self::from_be_bytes(buf)),
                         PrimitiveRepr::LittleEndian => Ok(Self::from_le_bytes(buf)),
                         PrimitiveRepr::Native => Ok(Self::from_ne_bytes(buf)),
@@ -78,8 +78,8 @@ macro_rules! impl_int_binary {
     (for $($type:ty),*) => {
         $(
             impl Encodable for $type {
-                fn encode(&self, to: &mut dyn Write, _: Version, int_repr: PrimitiveRepr) -> io::Result<()> {
-                    match int_repr {
+                fn encode(&self, to: &mut dyn Write, _: Version, primitive_repr: PrimitiveRepr) -> io::Result<()> {
+                    match primitive_repr {
                         PrimitiveRepr::BigEndian => to.write_all(&self.to_be_bytes()),
                         PrimitiveRepr::LittleEndian => to.write_all(&self.to_le_bytes()),
                         PrimitiveRepr::Native => to.write_all(&self.to_ne_bytes()),
@@ -88,15 +88,15 @@ macro_rules! impl_int_binary {
                 }
             }
             impl Decodable for $type {
-                fn decode(from: &mut dyn Read, _: Version, int_repr: PrimitiveRepr) -> io::Result<Self> {
-                    if let PrimitiveRepr::Varint = int_repr {
+                fn decode(from: &mut dyn Read, _: Version, primitive_repr: PrimitiveRepr) -> io::Result<Self> {
+                    if let PrimitiveRepr::Varint = primitive_repr {
                         return read_varint(from).and_then(|int| {
                             Self::try_from(int).map_err(|err| io::Error::new(ErrorKind::InvalidData, err))
                         });
                     }
                     let mut buf = [0u8; size_of::<Self>()];
                     from.read_exact(&mut buf)?;
-                    match int_repr {
+                    match primitive_repr {
                         PrimitiveRepr::BigEndian => Ok(Self::from_be_bytes(buf)),
                         PrimitiveRepr::LittleEndian => Ok(Self::from_le_bytes(buf)),
                         PrimitiveRepr::Native => Ok(Self::from_ne_bytes(buf)),
@@ -241,8 +241,34 @@ macro_rules! impl_nonzero_binary {
     };
 }
 
-impl_uint_binary!(for u8, u16, u32, u64, u128);
-impl_int_binary!(for i8, i16, i32, i64, i128);
+impl Encodable for u8 {
+    fn encode(&self, to: &mut dyn Write, _: Version, _: PrimitiveRepr) -> io::Result<()> {
+        to.write_all(&[*self])
+    }
+}
+impl Decodable for u8 {
+    fn decode(from: &mut dyn Read, _: Version, _: PrimitiveRepr) -> io::Result<Self> {
+        let mut buf = [0u8; size_of::<Self>()];
+        from.read_exact(&mut buf)?;
+        Ok(buf[0])
+    }
+}
+
+impl Encodable for i8 {
+    fn encode(&self, to: &mut dyn Write, _: Version, _: PrimitiveRepr) -> io::Result<()> {
+        to.write_all(&[*self as u8])
+    }
+}
+impl Decodable for i8 {
+    fn decode(from: &mut dyn Read, _: Version, _: PrimitiveRepr) -> io::Result<Self> {
+        let mut buf = [0u8; size_of::<Self>()];
+        from.read_exact(&mut buf)?;
+        Ok(buf[0] as i8)
+    }
+}
+
+impl_uint_binary!(for u16, u32, u64, u128);
+impl_int_binary!(for i16, i32, i64, i128);
 
 impl_atomic_binary!(
     for AtomicU8: u8, AtomicU16: u16, AtomicU32: u32, AtomicU64: u64,
