@@ -46,13 +46,13 @@ Many types have implementations for `Encodable` and `Decodable`. The implementat
 - `Option<NonZeroX>` will not have the same encoding as `X`. This pattern may be checked in the derive macro, but I cannot figure out how to specially implement it. Ideas are appreciated.
 
 # Checklist
-[ ] Lexicographical sorting options for dictionary structures.
-[ ] Actual fetching of enum discriminants instead of encoding by index.
-[ ] Proper gating of `Native` encoding behind `platform_dependent`.
-[ ] Feature-gate opt-outs of `Varint` encoding for byte and floating-point types.
-[ ] Options for providing defaults for skipped fields.
-[ ] Flexible default implementations for `Pin`.
-[ ] Expose the macros originally used for default implementations for use in user code.
-[ ] Configurable atomic loading/storing ordering methods.
-[ ] Null-pointer optimisation considerations for `Option<NonZeroX>`.
-[ ] A more exhaustive test suite.
+- [ ] Lexicographical sorting options for dictionary structures.
+- [ ] Actual fetching of enum discriminants instead of encoding by index.
+- [ ] Proper gating of `Native` encoding behind `platform_dependent`.
+- [ ] Feature-gate opt-outs of `Varint` encoding for byte and floating-point types.
+- [ ] Options for providing defaults for skipped fields.
+- [ ] Flexible default implementations for `Pin`.
+- [ ] Expose the macros originally used for default implementations for use in user code.
+- [ ] Configurable atomic loading/storing ordering methods.
+- [ ] Null-pointer optimisation considerations for `Option<NonZeroX>`.
+- [ ] A more exhaustive test suite.
