@@ -8,7 +8,7 @@ use syn::{
     Attribute, Data, DataEnum, DataStruct, DeriveInput, Expr, Fields, Ident, LitInt,
     parse::ParseStream, parse_macro_input, spanned::Spanned, token::Comma,
 };
-
+// TODO: deduplicate a whole bunch of things
 // TODO: x.x.x parsing (x.x is considered a float which adds complications)
 fn parse_version(stream: ParseStream) -> syn::Result<Version> {
     let major = stream.parse::<LitInt>()?.base10_parse::<u64>()?;
@@ -62,7 +62,7 @@ fn get_field_attribute_modifications(
 
     let mut seen_attributes = HashSet::new();
 
-    let version_decoder = quote! { Version::decode(from, version, primitive_repr)? };
+    // let version_decoder = quote! { Version::decode(from, version, primitive_repr)? };
     for attribute in field_attributes {
         let attr = attribute.path().segments.last().unwrap().ident.to_string();
         match &attr[..] {
@@ -140,8 +140,11 @@ fn get_field_attribute_modifications(
                 }
                 version_overridden = true;
                 let field_accessor = match field_accessor {
-                    Some(accessor) => accessor,
-                    None => &version_decoder,
+                    Some(accessor) => accessor.clone(),
+                    None => match &decode_with {
+                        Some(expr) => quote! { (#expr)(from, version, primitive_repr)? },
+                        None => quote! { Version::decode(from, version, primitive_repr)? },
+                    },
                 };
                 modifications = quote! {
                     #modifications
@@ -179,7 +182,7 @@ fn create_struct_encode_body(data_struct: &DataStruct) -> syn::Result<TokenStrea
             ..
         } = get_field_attribute_modifications(Some(&accessor), &field.attrs)?;
         let encode = match encode_with {
-            Some(expr) => quote! {(#expr)(&#accessor, to, version, primitive_repr)?;},
+            Some(expr) => quote! { (#expr)(&#accessor, to, version, primitive_repr)?; },
             None => quote! { #accessor.encode(to, version, primitive_repr)?; },
         };
         encode_body = quote! {
@@ -335,7 +338,6 @@ fn create_enum_decode_body(
         if let Fields::Unit = variant.fields {
             arm = quote! { #index => { Ok(Self::#variant_name) } };
         } else {
-            // TODO: deduplicate this
             match &variant.fields {
                 Fields::Named(fields) => {
                     let mut field_decoders = quote! {};

@@ -1,8 +1,9 @@
 #[cfg(test)]
 mod tests {
+    use std::fmt::Debug;
+
     use crate::{Decodable, Encodable, PrimitiveRepr, Version};
     use num::{BigInt, BigUint, bigint::Sign};
-    use std::fmt::Debug;
 
     fn round_trip<T: Encodable + Decodable + PartialEq + Debug>(source: T, repr: PrimitiveRepr) {
         let mut destination = vec![];
