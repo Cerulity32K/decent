@@ -84,6 +84,24 @@ fn get_field_attribute_modifications(
     for attribute in field_attributes {
         let attr = attribute.path().segments.last().unwrap().ident.to_string();
         match &attr[..] {
+            "until" if seen_attributes.contains(&"until") => {
+                panic!("attribute `until` doubly specified")
+            }
+            "until" => {
+                seen_attributes.insert("until");
+                let Version(major, minor, patch) = attribute.parse_args_with(parse_version)?;
+                usage_is_conditional = true;
+                modifications = quote! {
+                    #modifications
+                    use_field &= version < Version(#major, #minor, #patch);
+                };
+            }
+            _ => {}
+        }
+    }
+    for attribute in field_attributes {
+        let attr = attribute.path().segments.last().unwrap().ident.to_string();
+        match &attr[..] {
             "decode_with" if seen_attributes.contains(&"decode_with") => {
                 panic!("attribute `decode_with` doubly specified")
             }
@@ -444,7 +462,7 @@ fn create_enum_decode_body(
 // TODO: `until` and `fixed_repr` field attributes
 #[proc_macro_derive(
     Binary,
-    attributes(since, override_repr, version, encode_with, decode_with)
+    attributes(since, until, override_repr, version, encode_with, decode_with)
 )]
 pub fn decent(input: RustTokenStream) -> RustTokenStream {
     let input = parse_macro_input!(input as DeriveInput);
