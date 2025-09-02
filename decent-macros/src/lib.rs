@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use decent::{PrimitiveRepr, Version};
 use proc_macro::TokenStream as RustTokenStream;
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{
     Attribute, Data, DataEnum, DataStruct, DeriveInput, Expr, Fields, Ident, LitInt,
@@ -220,8 +220,14 @@ fn create_enum_encode_body(
     discriminant_type: &str,
 ) -> syn::Result<TokenStream> {
     let mut variant_arms = quote! {};
-    for (variant_index, variant) in data_enum.variants.iter().enumerate() {
+    let mut discriminant = quote! { 0 };
+    let mut discriminant_offset = 0;
+    for variant in data_enum.variants.iter() {
         let name = &variant.ident;
+        if let Some((_, discriminant_expression)) = &variant.discriminant {
+            discriminant = quote! { (#discriminant_expression) };
+            discriminant_offset = 0;
+        }
 
         let variant_binder = match &variant.fields {
             Fields::Named(fields) => {
@@ -248,9 +254,9 @@ fn create_enum_encode_body(
             Fields::Unit => quote! {},
         };
 
-        let variant_index = format!("{variant_index}{discriminant_type}").parse::<TokenStream>()?;
+        let encoded_discriminant = format!("(({discriminant} + {discriminant_offset}) as {discriminant_type})").parse::<TokenStream>()?;
         let mut variant_encode_body = quote! {
-            #variant_index.encode(to, version, primitive_repr)?;
+            #encoded_discriminant.encode(to, version, primitive_repr)?;
         };
         for (field_index, field) in variant.fields.iter().enumerate() {
             let field_binding = format!("__self_{field_index}").parse::<TokenStream>()?;
@@ -278,7 +284,9 @@ fn create_enum_encode_body(
         variant_arms = quote! {
             #variant_arms
             Self::#name #variant_binder => { #variant_encode_body }
-        }
+        };
+
+        discriminant_offset += 1;
     }
     Ok(quote! {
         match self {
@@ -349,12 +357,19 @@ fn create_enum_decode_body(
 ) -> syn::Result<TokenStream> {
     let discriminant_type_as_identifier = discriminant_type.parse::<TokenStream>()?;
     let mut variant_arms = quote! {};
-    for (variant_index, variant) in data_enum.variants.iter().enumerate() {
+    let mut discriminant = quote! { 0 };
+    let mut discriminant_offset = 0;
+    for variant in data_enum.variants.iter() {
+        if let Some((_, discriminant_expression)) = &variant.discriminant {
+            discriminant = quote! { #discriminant_expression };
+            discriminant_offset = 0;
+        }
+        let offset_tokens = discriminant_offset.to_string().parse::<TokenStream>()?;
+        let pattern = quote! { __discriminant if __discriminant == (#discriminant) + #offset_tokens };
         let arm;
-        let index = format!("{variant_index}{discriminant_type}").parse::<TokenStream>()?;
         let variant_name = &variant.ident;
         if let Fields::Unit = variant.fields {
-            arm = quote! { #index => { Ok(Self::#variant_name) } };
+            arm = quote! { #pattern => { Ok(Self::#variant_name) } };
         } else {
             match &variant.fields {
                 Fields::Named(fields) => {
@@ -399,7 +414,7 @@ fn create_enum_decode_body(
                             #field_name: { #modifications #value },
                         };
                     }
-                    arm = quote! { #index => { Ok(Self::#variant_name { #field_decoders }) } };
+                    arm = quote! { #pattern => { Ok(Self::#variant_name { #field_decoders }) } };
                 }
                 Fields::Unnamed(fields) => {
                     let mut field_decoders = quote! {};
@@ -441,7 +456,7 @@ fn create_enum_decode_body(
                             { #modifications #value },
                         };
                     }
-                    arm = quote! { #index => { Ok(Self::#variant_name(#field_decoders)) } };
+                    arm = quote! { #pattern => { Ok(Self::#variant_name(#field_decoders)) } };
                 }
                 Fields::Unit => unreachable!(),
             }
@@ -450,6 +465,7 @@ fn create_enum_decode_body(
             #variant_arms
             #arm
         };
+        discriminant_offset += 1;
     }
     Ok(quote! {
         match #discriminant_type_as_identifier::decode(from, version, primitive_repr)? {

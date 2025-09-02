@@ -227,6 +227,36 @@ fn enums() {
     }
 }
 
+#[derive(Binary)]
+enum Asdf {
+    A,
+    B,
+    C,
+    D,
+    E,
+    F,
+    G,
+    H,
+    I = 20,
+    J,
+    K,
+    L,
+    M,
+    N,
+    O,
+    P,
+    Q,
+    R,
+    S,
+    T,
+    U,
+    V,
+    W,
+    X,
+    Y,
+    Z,
+}
+
 #[test]
 fn custom_encoded_version() {
     round_trip_with_size(

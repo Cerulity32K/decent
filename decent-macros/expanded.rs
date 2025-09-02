@@ -3,8 +3,11 @@
 use std::prelude::rust_2024::*;
 #[macro_use]
 extern crate std;
-use std::{fmt::Debug, num::NonZeroU32};
-use decent::{encoders::*, decoders::*, Decodable, Encodable, PrimitiveRepr, Version};
+use std::{
+    fmt::Debug, io::{self, Read, Write},
+    num::NonZeroU32,
+};
+use decent::{Decodable, Encodable, PrimitiveRepr, Version, decoders::*, encoders::*};
 use decent_macros::Binary;
 enum TestEnum {
     Testa(#[override_repr(BigEndian)] #[since(1, 0, 0)] u32),
@@ -24,7 +27,7 @@ impl Encodable for TestEnum {
     ) -> std::io::Result<()> {
         match self {
             Self::Testa(__self_0) => {
-                0u32.encode(to, version, primitive_repr)?;
+                ((0 + 0) as u32).encode(to, version, primitive_repr)?;
                 {
                     let mut use_field = true;
                     use_field &= version >= Version(1u64, 0u64, 0u64);
@@ -35,7 +38,7 @@ impl Encodable for TestEnum {
                 }
             }
             Self::Testa2(__self_0) => {
-                1u32.encode(to, version, primitive_repr)?;
+                ((0 + 1) as u32).encode(to, version, primitive_repr)?;
                 {
                     let mut use_field = true;
                     let primitive_repr = decent::PrimitiveRepr::BigEndian;
@@ -46,10 +49,10 @@ impl Encodable for TestEnum {
                 }
             }
             Self::Testa3() => {
-                2u32.encode(to, version, primitive_repr)?;
+                ((0 + 2) as u32).encode(to, version, primitive_repr)?;
             }
             Self::Testb { asdf: __self_0 } => {
-                3u32.encode(to, version, primitive_repr)?;
+                ((0 + 3) as u32).encode(to, version, primitive_repr)?;
                 {
                     let mut use_field = true;
                     use_field &= version >= Version(1u64, 0u64, 0u64);
@@ -60,7 +63,7 @@ impl Encodable for TestEnum {
                 }
             }
             Self::Testb2 { test: __self_0 } => {
-                4u32.encode(to, version, primitive_repr)?;
+                ((0 + 4) as u32).encode(to, version, primitive_repr)?;
                 {
                     let mut use_field = true;
                     let primitive_repr = decent::PrimitiveRepr::BigEndian;
@@ -71,10 +74,10 @@ impl Encodable for TestEnum {
                 }
             }
             Self::Testb3 {} => {
-                5u32.encode(to, version, primitive_repr)?;
+                ((0 + 5) as u32).encode(to, version, primitive_repr)?;
             }
             Self::Testc => {
-                6u32.encode(to, version, primitive_repr)?;
+                ((0 + 6) as u32).encode(to, version, primitive_repr)?;
             }
         }
         Ok(())
@@ -87,7 +90,7 @@ impl Decodable for TestEnum {
         primitive_repr: decent::PrimitiveRepr,
     ) -> std::io::Result<Self> {
         match u32::decode(from, version, primitive_repr)? {
-            0u32 => {
+            __discriminant if __discriminant == (0) + 0 => {
                 Ok(
                     Self::Testa({
                         let mut use_field = true;
@@ -101,7 +104,7 @@ impl Decodable for TestEnum {
                     }),
                 )
             }
-            1u32 => {
+            __discriminant if __discriminant == (0) + 1 => {
                 Ok(
                     Self::Testa2({
                         let mut use_field = true;
@@ -111,8 +114,8 @@ impl Decodable for TestEnum {
                     }),
                 )
             }
-            2u32 => Ok(Self::Testa3()),
-            3u32 => {
+            __discriminant if __discriminant == (0) + 2 => Ok(Self::Testa3()),
+            __discriminant if __discriminant == (0) + 3 => {
                 Ok(Self::Testb {
                     asdf: {
                         let mut use_field = true;
@@ -126,7 +129,7 @@ impl Decodable for TestEnum {
                     },
                 })
             }
-            4u32 => {
+            __discriminant if __discriminant == (0) + 4 => {
                 Ok(Self::Testb2 {
                     test: {
                         let mut use_field = true;
@@ -136,8 +139,8 @@ impl Decodable for TestEnum {
                     },
                 })
             }
-            5u32 => Ok(Self::Testb3 {}),
-            6u32 => Ok(Self::Testc),
+            __discriminant if __discriminant == (0) + 5 => Ok(Self::Testb3 {}),
+            __discriminant if __discriminant == (0) + 6 => Ok(Self::Testc),
             other => {
                 Err(
                     std::io::Error::new(
@@ -463,6 +466,140 @@ impl ::core::fmt::Debug for Asdf4 {
         )
     }
 }
+fn decode_major_version_u16(
+    from: &mut dyn Read,
+    current_version: Version,
+    primitive_repr: PrimitiveRepr,
+) -> io::Result<Version> {
+    Ok(Version(u16::decode(from, current_version, primitive_repr)? as u64, 0, 0))
+}
+fn encode_major_version_u16(
+    value: &Version,
+    to: &mut dyn Write,
+    current_version: Version,
+    primitive_repr: PrimitiveRepr,
+) -> io::Result<()> {
+    u16::try_from(value.0)
+        .map_err(|error| io::Error::other(error))?
+        .encode(to, current_version, primitive_repr)
+}
+struct EncodedVersionTuple(
+    #[version]
+    #[encode_with(encode_major_version_u16)]
+    #[decode_with(decode_major_version_u16)]
+    Version,
+);
+impl Encodable for EncodedVersionTuple {
+    fn encode(
+        &self,
+        to: &mut dyn std::io::Write,
+        mut version: decent::Version,
+        primitive_repr: decent::PrimitiveRepr,
+    ) -> std::io::Result<()> {
+        {
+            let mut use_field = true;
+            version = self.0;
+            if use_field {
+                (encode_major_version_u16)(&self.0, to, version, primitive_repr)?;
+            }
+        }
+        Ok(())
+    }
+}
+impl Decodable for EncodedVersionTuple {
+    fn decode(
+        from: &mut dyn std::io::Read,
+        mut version: decent::Version,
+        primitive_repr: decent::PrimitiveRepr,
+    ) -> std::io::Result<Self> {
+        Ok(
+            Self({
+                let mut use_field = true;
+                version = (decode_major_version_u16)(from, version, primitive_repr)?;
+                version
+            }),
+        )
+    }
+}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for EncodedVersionTuple {}
+#[automatically_derived]
+impl ::core::cmp::PartialEq for EncodedVersionTuple {
+    #[inline]
+    fn eq(&self, other: &EncodedVersionTuple) -> bool {
+        self.0 == other.0
+    }
+}
+#[automatically_derived]
+impl ::core::fmt::Debug for EncodedVersionTuple {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        ::core::fmt::Formatter::debug_tuple_field1_finish(
+            f,
+            "EncodedVersionTuple",
+            &&self.0,
+        )
+    }
+}
+struct EncodedVersionNamed {
+    #[version]
+    #[encode_with(encode_major_version_u16)]
+    #[decode_with(decode_major_version_u16)]
+    version: Version,
+}
+impl Encodable for EncodedVersionNamed {
+    fn encode(
+        &self,
+        to: &mut dyn std::io::Write,
+        mut version: decent::Version,
+        primitive_repr: decent::PrimitiveRepr,
+    ) -> std::io::Result<()> {
+        {
+            let mut use_field = true;
+            version = self.version;
+            if use_field {
+                (encode_major_version_u16)(&self.version, to, version, primitive_repr)?;
+            }
+        }
+        Ok(())
+    }
+}
+impl Decodable for EncodedVersionNamed {
+    fn decode(
+        from: &mut dyn std::io::Read,
+        mut version: decent::Version,
+        primitive_repr: decent::PrimitiveRepr,
+    ) -> std::io::Result<Self> {
+        Ok(Self {
+            version: {
+                let mut use_field = true;
+                version = (decode_major_version_u16)(from, version, primitive_repr)?;
+                version
+            },
+        })
+    }
+}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for EncodedVersionNamed {}
+#[automatically_derived]
+impl ::core::cmp::PartialEq for EncodedVersionNamed {
+    #[inline]
+    fn eq(&self, other: &EncodedVersionNamed) -> bool {
+        self.version == other.version
+    }
+}
+#[automatically_derived]
+impl ::core::fmt::Debug for EncodedVersionNamed {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        ::core::fmt::Formatter::debug_struct_field1_finish(
+            f,
+            "EncodedVersionNamed",
+            "version",
+            &&self.version,
+        )
+    }
+}
 fn round_trip<T: Encodable + Decodable + PartialEq + Debug>(
     source: T,
     version: Version,
@@ -554,9 +691,9 @@ pub const unit: test::TestDescAndFn = test::TestDescAndFn {
         ignore: false,
         ignore_message: ::core::option::Option::None,
         source_file: "decent-macros/tests/test.rs",
-        start_line: 88usize,
+        start_line: 130usize,
         start_col: 4usize,
-        end_line: 88usize,
+        end_line: 130usize,
         end_col: 8usize,
         compile_fail: false,
         no_run: false,
@@ -577,9 +714,9 @@ pub const struct_with_vec: test::TestDescAndFn = test::TestDescAndFn {
         ignore: false,
         ignore_message: ::core::option::Option::None,
         source_file: "decent-macros/tests/test.rs",
-        start_line: 93usize,
+        start_line: 135usize,
         start_col: 4usize,
-        end_line: 93usize,
+        end_line: 135usize,
         end_col: 19usize,
         compile_fail: false,
         no_run: false,
@@ -630,9 +767,9 @@ pub const versions: test::TestDescAndFn = test::TestDescAndFn {
         ignore: false,
         ignore_message: ::core::option::Option::None,
         source_file: "decent-macros/tests/test.rs",
-        start_line: 107usize,
+        start_line: 149usize,
         start_col: 4usize,
-        end_line: 107usize,
+        end_line: 149usize,
         end_col: 12usize,
         compile_fail: false,
         no_run: false,
@@ -712,9 +849,9 @@ pub const enums: test::TestDescAndFn = test::TestDescAndFn {
         ignore: false,
         ignore_message: ::core::option::Option::None,
         source_file: "decent-macros/tests/test.rs",
-        start_line: 172usize,
+        start_line: 214usize,
         start_col: 4usize,
-        end_line: 172usize,
+        end_line: 214usize,
         end_col: 9usize,
         compile_fail: false,
         no_run: false,
@@ -740,10 +877,217 @@ fn enums() {
         round_trip(variant, Version::ZERO, PrimitiveRepr::Varint);
     }
 }
+enum Asdf {
+    A,
+    B,
+    C,
+    D,
+    E,
+    F,
+    G,
+    H,
+    I = 20,
+    J,
+    K,
+    L,
+    M,
+    N,
+    O,
+    P,
+    Q,
+    R,
+    S,
+    T,
+    U,
+    V,
+    W,
+    X,
+    Y,
+    Z,
+}
+impl Encodable for Asdf {
+    fn encode(
+        &self,
+        to: &mut dyn std::io::Write,
+        mut version: decent::Version,
+        primitive_repr: decent::PrimitiveRepr,
+    ) -> std::io::Result<()> {
+        match self {
+            Self::A => {
+                ((0 + 0) as u32).encode(to, version, primitive_repr)?;
+            }
+            Self::B => {
+                ((0 + 1) as u32).encode(to, version, primitive_repr)?;
+            }
+            Self::C => {
+                ((0 + 2) as u32).encode(to, version, primitive_repr)?;
+            }
+            Self::D => {
+                ((0 + 3) as u32).encode(to, version, primitive_repr)?;
+            }
+            Self::E => {
+                ((0 + 4) as u32).encode(to, version, primitive_repr)?;
+            }
+            Self::F => {
+                ((0 + 5) as u32).encode(to, version, primitive_repr)?;
+            }
+            Self::G => {
+                ((0 + 6) as u32).encode(to, version, primitive_repr)?;
+            }
+            Self::H => {
+                ((0 + 7) as u32).encode(to, version, primitive_repr)?;
+            }
+            Self::I => {
+                (((20) + 0) as u32).encode(to, version, primitive_repr)?;
+            }
+            Self::J => {
+                (((20) + 1) as u32).encode(to, version, primitive_repr)?;
+            }
+            Self::K => {
+                (((20) + 2) as u32).encode(to, version, primitive_repr)?;
+            }
+            Self::L => {
+                (((20) + 3) as u32).encode(to, version, primitive_repr)?;
+            }
+            Self::M => {
+                (((20) + 4) as u32).encode(to, version, primitive_repr)?;
+            }
+            Self::N => {
+                (((20) + 5) as u32).encode(to, version, primitive_repr)?;
+            }
+            Self::O => {
+                (((20) + 6) as u32).encode(to, version, primitive_repr)?;
+            }
+            Self::P => {
+                (((20) + 7) as u32).encode(to, version, primitive_repr)?;
+            }
+            Self::Q => {
+                (((20) + 8) as u32).encode(to, version, primitive_repr)?;
+            }
+            Self::R => {
+                (((20) + 9) as u32).encode(to, version, primitive_repr)?;
+            }
+            Self::S => {
+                (((20) + 10) as u32).encode(to, version, primitive_repr)?;
+            }
+            Self::T => {
+                (((20) + 11) as u32).encode(to, version, primitive_repr)?;
+            }
+            Self::U => {
+                (((20) + 12) as u32).encode(to, version, primitive_repr)?;
+            }
+            Self::V => {
+                (((20) + 13) as u32).encode(to, version, primitive_repr)?;
+            }
+            Self::W => {
+                (((20) + 14) as u32).encode(to, version, primitive_repr)?;
+            }
+            Self::X => {
+                (((20) + 15) as u32).encode(to, version, primitive_repr)?;
+            }
+            Self::Y => {
+                (((20) + 16) as u32).encode(to, version, primitive_repr)?;
+            }
+            Self::Z => {
+                (((20) + 17) as u32).encode(to, version, primitive_repr)?;
+            }
+        }
+        Ok(())
+    }
+}
+impl Decodable for Asdf {
+    fn decode(
+        from: &mut dyn std::io::Read,
+        mut version: decent::Version,
+        primitive_repr: decent::PrimitiveRepr,
+    ) -> std::io::Result<Self> {
+        match u32::decode(from, version, primitive_repr)? {
+            __discriminant if __discriminant == (0) + 0 => Ok(Self::A),
+            __discriminant if __discriminant == (0) + 1 => Ok(Self::B),
+            __discriminant if __discriminant == (0) + 2 => Ok(Self::C),
+            __discriminant if __discriminant == (0) + 3 => Ok(Self::D),
+            __discriminant if __discriminant == (0) + 4 => Ok(Self::E),
+            __discriminant if __discriminant == (0) + 5 => Ok(Self::F),
+            __discriminant if __discriminant == (0) + 6 => Ok(Self::G),
+            __discriminant if __discriminant == (0) + 7 => Ok(Self::H),
+            __discriminant if __discriminant == (20) + 0 => Ok(Self::I),
+            __discriminant if __discriminant == (20) + 1 => Ok(Self::J),
+            __discriminant if __discriminant == (20) + 2 => Ok(Self::K),
+            __discriminant if __discriminant == (20) + 3 => Ok(Self::L),
+            __discriminant if __discriminant == (20) + 4 => Ok(Self::M),
+            __discriminant if __discriminant == (20) + 5 => Ok(Self::N),
+            __discriminant if __discriminant == (20) + 6 => Ok(Self::O),
+            __discriminant if __discriminant == (20) + 7 => Ok(Self::P),
+            __discriminant if __discriminant == (20) + 8 => Ok(Self::Q),
+            __discriminant if __discriminant == (20) + 9 => Ok(Self::R),
+            __discriminant if __discriminant == (20) + 10 => Ok(Self::S),
+            __discriminant if __discriminant == (20) + 11 => Ok(Self::T),
+            __discriminant if __discriminant == (20) + 12 => Ok(Self::U),
+            __discriminant if __discriminant == (20) + 13 => Ok(Self::V),
+            __discriminant if __discriminant == (20) + 14 => Ok(Self::W),
+            __discriminant if __discriminant == (20) + 15 => Ok(Self::X),
+            __discriminant if __discriminant == (20) + 16 => Ok(Self::Y),
+            __discriminant if __discriminant == (20) + 17 => Ok(Self::Z),
+            other => {
+                Err(
+                    std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        ::alloc::__export::must_use({
+                            ::alloc::fmt::format(
+                                format_args!("unknown discriminant {0}", other),
+                            )
+                        }),
+                    ),
+                )
+            }
+        }
+    }
+}
+extern crate test;
+#[rustc_test_marker = "custom_encoded_version"]
+#[doc(hidden)]
+pub const custom_encoded_version: test::TestDescAndFn = test::TestDescAndFn {
+    desc: test::TestDesc {
+        name: test::StaticTestName("custom_encoded_version"),
+        ignore: false,
+        ignore_message: ::core::option::Option::None,
+        source_file: "decent-macros/tests/test.rs",
+        start_line: 261usize,
+        start_col: 4usize,
+        end_line: 261usize,
+        end_col: 26usize,
+        compile_fail: false,
+        no_run: false,
+        should_panic: test::ShouldPanic::No,
+        test_type: test::TestType::IntegrationTest,
+    },
+    testfn: test::StaticTestFn(
+        #[coverage(off)]
+        || test::assert_test_result(custom_encoded_version()),
+    ),
+};
+fn custom_encoded_version() {
+    round_trip_with_size(
+        EncodedVersionTuple(Version(105, 0, 0)),
+        Version::ZERO,
+        PrimitiveRepr::Native,
+        2,
+    );
+    round_trip_with_size(
+        EncodedVersionNamed {
+            version: Version(105, 0, 0),
+        },
+        Version::ZERO,
+        PrimitiveRepr::Native,
+        2,
+    );
+}
 #[rustc_main]
 #[coverage(off)]
 #[doc(hidden)]
 pub fn main() -> () {
     extern crate test;
-    test::test_main_static(&[&enums, &struct_with_vec, &unit, &versions])
+    test::test_main_static(
+        &[&custom_encoded_version, &enums, &struct_with_vec, &unit, &versions],
+    )
 }
