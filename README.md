@@ -62,5 +62,6 @@ Many types have implementations for `Encodable` and `Decodable`. The implementat
 - [ ] Flexible default implementations for `Pin`.
 - [ ] Expose the macros originally used for default implementations for use in user code.
 - [ ] Configurable atomic loading/storing ordering methods.
-- [ ] Null-pointer optimisation considerations for `Option<NonZeroX>`.
+- [X] Customisable encode/decode attributes. **`#[encode_with]` and `#[decode_with]` are now usable attributes with `#[derive(Binary)]`. They accept functions that have more or less identical signatures to the `Encodable` and `Decodable` traits (given `T` as the field type, `fn(&T, &mut dyn Write, Version, PrimitiveRepr) -> io::Result<()>` for encoding, `fn(&mut dyn Read, Version, PrimitiveRepr) -> io::Result<T> for decoding`).**
+- [X] Null-pointer optimisation considerations for `Option<NonZeroX>`. **NPO encoders/decoders are native to the crate and can be used with the `encode_with` or `decode_with` field attributes.**
 - [ ] A more exhaustive test suite.

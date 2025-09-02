@@ -8,9 +8,9 @@
 pub mod impls;
 pub mod iter;
 pub mod read;
-pub mod zigzag;
-pub mod write;
 mod test;
+pub mod write;
+pub mod zigzag;
 
 pub use read::Decodable;
 pub use write::Encodable;
@@ -65,4 +65,66 @@ pub enum PrimitiveRepr {
 pub struct Version(pub u64, pub u64, pub u64);
 impl Version {
     pub const ZERO: Self = Version(0, 0, 0);
+}
+
+/// A module relating to null-pointer optimisations (where given `T`, `Option<NonZero<T>>` is valid).
+pub mod npo {
+    use std::num::NonZero;
+
+    /// A type subject to null-pointer optimisations (where `T` and `Option<NonZero<T>>` are optimised to have the same representation).
+    pub trait NPO {
+        type NonZero;
+        fn make_nonzero(&self) -> Option<Self::NonZero>;
+        fn unwrap_or_zero(x: &Option<Self::NonZero>) -> Self;
+    }
+    macro_rules! impl_nonzero {
+        (for $($type:ty),+) => {
+            $(
+                impl NPO for $type {
+                    type NonZero = NonZero<$type>;
+                    fn make_nonzero(&self) -> Option<Self::NonZero> {
+                        NonZero::new(*self)
+                    }
+                    fn unwrap_or_zero(x: &Option<Self::NonZero>) -> Self {
+                        match x {
+                            Some(x) => x.get(),
+                            None => 0,
+                        }
+                    }
+                }
+            )+
+        };
+    }
+    impl_nonzero!(for u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
+}
+
+/// A set of useful encoders.
+pub mod encoders {
+    use std::io::{self, Write};
+
+    use crate::{Encodable, PrimitiveRepr, Version, npo::NPO};
+
+    pub fn npo_encode<T: NPO + Encodable>(
+        value: &Option<T::NonZero>,
+        to: &mut dyn Write,
+        version: Version,
+        primitive_repr: PrimitiveRepr,
+    ) -> io::Result<()> {
+        <T as NPO>::unwrap_or_zero(value).encode(to, version, primitive_repr)
+    }
+}
+
+/// A set of useful decoders.
+pub mod decoders {
+    use std::io::{self, Read};
+
+    use crate::{Decodable, PrimitiveRepr, Version, npo::NPO};
+
+    pub fn npo_decode<T: NPO + Decodable>(
+        from: &mut dyn Read,
+        version: Version,
+        primitive_repr: PrimitiveRepr,
+    ) -> io::Result<Option<T::NonZero>> {
+        T::decode(from, version, primitive_repr).map(|x| x.make_nonzero())
+    }
 }

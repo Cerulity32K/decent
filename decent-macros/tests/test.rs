@@ -1,6 +1,6 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, num::NonZeroU32};
 
-use decent::{Decodable, Encodable, PrimitiveRepr, Version};
+use decent::{encoders::*, decoders::*, Decodable, Encodable, PrimitiveRepr, Version};
 use decent_macros::Binary;
 
 #[derive(Binary, PartialEq, Debug)]
@@ -46,7 +46,9 @@ struct Asdf3;
 
 #[derive(Binary, PartialEq, Debug)]
 struct Asdf4 {
-    x: u32,
+    #[encode_with(npo_encode::<u32>)]
+    #[decode_with(npo_decode::<u32>)]
+    x: Option<NonZeroU32>,
     y: Vec<i32>,
 }
 
@@ -91,7 +93,7 @@ fn unit() {
 fn struct_with_vec() {
     round_trip(
         Asdf4 {
-            x: 5,
+            x: NonZeroU32::new(5),
             y: vec![
                 2, 6, 435897357, 4, 3, 3, 54, 5, -3, -6, -2, -982342256, 53, 563, 345, 54, 22,
             ],

@@ -1,4 +1,6 @@
 /decent/target
 /decent-macros/target
+/decent-macros/expanded_tests.rs
 /target
 /archived
+/.vscode
