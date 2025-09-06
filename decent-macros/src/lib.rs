@@ -313,12 +313,11 @@ fn create_struct_decode_body(data_struct: &DataStruct) -> syn::Result<TokenStrea
             let name = field_name
                 .as_ref()
                 .expect("`bind` must be used on named fields");
-            (quote! { let #name }, quote! { #name })
+            (quote! { let #name: #field_type }, quote! { #name })
         } else {
-            (
-                format!("let __self_{field_index}").parse::<TokenStream>()?,
-                format!("__self_{field_index}").parse::<TokenStream>()?,
-            )
+            let name = format!("__self_{field_index}").parse::<TokenStream>()?;
+            let decl = quote! { let #name: #field_type };
+            (decl, name)
         };
 
         let mut value = match decode_with {

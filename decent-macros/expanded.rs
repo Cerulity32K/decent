@@ -278,7 +278,7 @@ impl Decodable for Asdf1 {
                 let mut use_field = true;
                 version = <Version as Decodable>::decode(from, version, primitive_repr)?;
             }
-            let __self_1;
+            let __self_1: u32;
             {
                 let mut use_field = true;
                 use_field &= version >= Version(1u64, 0u64, 0u64);
@@ -352,7 +352,7 @@ impl Decodable for Asdf2 {
         primitive_repr: decent::PrimitiveRepr,
     ) -> std::io::Result<Self> {
         Ok({
-            let __self_0;
+            let __self_0: u32;
             {
                 let mut use_field = true;
                 use_field &= version >= Version(1u64, 0u64, 0u64);
@@ -457,12 +457,12 @@ impl Decodable for Asdf4 {
         primitive_repr: decent::PrimitiveRepr,
     ) -> std::io::Result<Self> {
         Ok({
-            let __self_0;
+            let __self_0: Option<NonZeroU32>;
             {
                 let mut use_field = true;
                 __self_0 = (npo_decode::<u32>)(&mut *from, version, primitive_repr)?;
             }
-            let __self_1;
+            let __self_1: Vec<i32>;
             {
                 let mut use_field = true;
                 __self_1 = <Vec<
@@ -956,7 +956,7 @@ impl Decodable for Uiop {
         primitive_repr: decent::PrimitiveRepr,
     ) -> std::io::Result<Self> {
         Ok({
-            let __self_0;
+            let __self_0: ();
             {
                 let mut use_field = true;
                 __self_0 = <() as Decodable>::decode(from, version, primitive_repr)?;
@@ -1056,54 +1056,54 @@ impl Decodable for BindTest {
         primitive_repr: decent::PrimitiveRepr,
     ) -> std::io::Result<Self> {
         Ok({
-            let __self_0;
+            let __self_0: u32;
             {
                 let mut use_field = true;
                 __self_0 = <u32 as Decodable>::decode(from, version, primitive_repr)?;
             }
-            let __self_1;
+            let __self_1: u32;
             {
                 let mut use_field = true;
                 __self_1 = <u32 as Decodable>::decode(from, version, primitive_repr)?;
             }
-            let __self_2;
+            let __self_2: u32;
             {
                 let mut use_field = true;
                 __self_2 = <u32 as Decodable>::decode(from, version, primitive_repr)?;
             }
-            let d;
+            let d: u32;
             {
                 let mut use_field = true;
                 d = <u32 as Decodable>::decode(from, version, primitive_repr)?;
             }
-            let __self_4;
+            let __self_4: u32;
             {
                 let mut use_field = true;
                 __self_4 = <u32 as Decodable>::decode(from, version, primitive_repr)?;
             }
-            let __self_5;
+            let __self_5: u32;
             {
                 let mut use_field = true;
                 __self_5 = <u32 as Decodable>::decode(from, version, primitive_repr)?;
             }
-            let __self_6;
+            let __self_6: u32;
             {
                 let mut use_field = true;
                 __self_6 = <u32 as Decodable>::decode(from, version, primitive_repr)?;
             }
-            let __self_7;
+            let __self_7: u32;
             {
                 let mut use_field = true;
                 __self_7 = (|_, _, _| -> io::Result<u32> {
                     Ok(d)
                 })(&mut *from, version, primitive_repr)?;
             }
-            let __self_8;
+            let __self_8: u32;
             {
                 let mut use_field = true;
                 __self_8 = <u32 as Decodable>::decode(from, version, primitive_repr)?;
             }
-            let __self_9;
+            let __self_9: u32;
             {
                 let mut use_field = true;
                 __self_9 = <u32 as Decodable>::decode(from, version, primitive_repr)?;
