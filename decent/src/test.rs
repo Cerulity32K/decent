@@ -10,7 +10,7 @@ mod tests {
         source
             .encode(&mut destination, Version::ZERO, repr)
             .unwrap();
-        println!("{source:?}: {}", destination.len());
+        println!("{source:?}: {:?}", destination);
         let decoded = T::decode(&mut &destination[..], Version::ZERO, repr).unwrap();
         assert_eq!(source, decoded)
     }
@@ -37,10 +37,19 @@ mod tests {
     }
 
     #[test]
-    fn repr_tests() {
-        round_trip(1000u32, PrimitiveRepr::BigEndian);
-        round_trip(1000u32, PrimitiveRepr::LittleEndian);
-        round_trip(1000u32, PrimitiveRepr::Native);
-        round_trip(1000u32, PrimitiveRepr::Varint);
+    fn integer_repr() {
+        for uint in [1000u32] {
+            round_trip(uint, PrimitiveRepr::BigEndian);
+            round_trip(uint, PrimitiveRepr::LittleEndian);
+            round_trip(uint, PrimitiveRepr::Native);
+            round_trip(uint, PrimitiveRepr::Varint);
+        }
+
+        for sint in [12345i32, -12345i32, -1i32, 0i32, 1i32] {
+            round_trip(sint, PrimitiveRepr::BigEndian);
+            round_trip(sint, PrimitiveRepr::LittleEndian);
+            round_trip(sint, PrimitiveRepr::Native);
+            round_trip(sint, PrimitiveRepr::Varint);
+        }
     }
 }

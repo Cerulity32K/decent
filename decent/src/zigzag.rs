@@ -1,7 +1,7 @@
 use std::{
     fmt::Display,
     io::{self, Read, Write},
-    ops::{AddAssign, BitAnd, ShrAssign},
+    ops::{AddAssign, BitAnd, ShrAssign, SubAssign},
 };
 
 use num::{BigInt, BigUint, Signed, Zero, bigint::Sign};
@@ -51,7 +51,7 @@ where
 /// Used for the [Varint][`PrimitiveRepr::Varint`] repr on signed integer types, as well as for every [BigInt][`num::BigInt`].
 pub fn write_varint<
     I: Signed
-        + AddAssign
+        + SubAssign
         + TryFrom<u8>
         + TryInto<u8>
         + PartialOrd
@@ -69,7 +69,7 @@ where
     let abs = int.abs();
     let mut number = abs.clone() + abs;
     if int.is_negative() {
-        number += I::one();
+        number -= I::one();
     }
     write_varuint(number, to)?;
     Ok(())
@@ -94,13 +94,14 @@ pub fn read_varuint(from: &mut dyn Read) -> io::Result<BigUint> {
 
 pub fn read_varint(from: &mut dyn Read) -> io::Result<BigInt> {
     let int = read_varuint(from)?;
+    let sign_bit_set = int.trailing_ones() > 0;
     let integer = BigInt::from_biguint(
-        if int.trailing_ones() > 0 {
+        if sign_bit_set {
             Sign::Minus
         } else {
             Sign::Plus
         },
-        int >> 1,
+        (int >> 1) + if sign_bit_set { 1u32 } else { 0 },
     );
     Ok(integer)
 }

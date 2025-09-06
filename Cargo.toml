@@ -9,9 +9,9 @@ resolver = "3"
 edition = "2024"
 
 [workspace.dependencies.decent]
-version = "0.1.0"
+version = "0.2.0"
 path = "decent"
 
 [workspace.dependencies.decent-macros]
-version = "0.1.3"
+version = "0.2.0"
 path = "decent-macros"
