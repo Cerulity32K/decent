@@ -118,7 +118,7 @@ fn round_trip_with_size<T: Encodable + Decodable + PartialEq + Debug>(
 ) {
     let mut destination = vec![];
     source.encode(&mut destination, version, repr).unwrap();
-    assert_eq!(destination.len(), byte_count);
+    assert_eq!(destination.len(), byte_count, "encoded the wrong number of bytes");
     let decoded = T::decode(&mut &destination[..], version, repr)
         .expect(&format!("decode failed from {destination:?}"));
     assert_eq!(

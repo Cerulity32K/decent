@@ -42,7 +42,6 @@ impl Encodable for TestEnum {
                 {
                     let mut use_field = true;
                     let primitive_repr = decent::PrimitiveRepr::BigEndian;
-                    version = *__self_0;
                     if use_field {
                         __self_0.encode(to, version, primitive_repr)?;
                     }
@@ -67,7 +66,6 @@ impl Encodable for TestEnum {
                 {
                     let mut use_field = true;
                     let primitive_repr = decent::PrimitiveRepr::BigEndian;
-                    version = *__self_0;
                     if use_field {
                         __self_0.encode(to, version, primitive_repr)?;
                     }
@@ -109,8 +107,18 @@ impl Decodable for TestEnum {
                     Self::Testa2({
                         let mut use_field = true;
                         let primitive_repr = decent::PrimitiveRepr::BigEndian;
-                        version = Version::decode(from, version, primitive_repr)?;
-                        if use_field { version } else { Default::default() }
+                        if use_field {
+                            {
+                                version = <Version as Decodable>::decode(
+                                    from,
+                                    version,
+                                    primitive_repr,
+                                )?;
+                                version
+                            }
+                        } else {
+                            Default::default()
+                        }
                     }),
                 )
             }
@@ -134,8 +142,18 @@ impl Decodable for TestEnum {
                     test: {
                         let mut use_field = true;
                         let primitive_repr = decent::PrimitiveRepr::BigEndian;
-                        version = Version::decode(from, version, primitive_repr)?;
-                        if use_field { version } else { Default::default() }
+                        if use_field {
+                            {
+                                version = <Version as Decodable>::decode(
+                                    from,
+                                    version,
+                                    primitive_repr,
+                                )?;
+                                version
+                            }
+                        } else {
+                            Default::default()
+                        }
                     },
                 })
             }
@@ -232,9 +250,11 @@ impl Encodable for Asdf1 {
     ) -> std::io::Result<()> {
         {
             let mut use_field = true;
-            version = self.version;
             if use_field {
-                self.version.encode(to, version, primitive_repr)?;
+                {
+                    self.version.encode(to, version, primitive_repr)?;
+                    version = self.version;
+                }
             }
         }
         {
@@ -256,7 +276,6 @@ impl Decodable for Asdf1 {
         Ok({
             {
                 let mut use_field = true;
-                version = Version::decode(from, version, primitive_repr)?;
                 version = <Version as Decodable>::decode(from, version, primitive_repr)?;
             }
             let __self_1;
@@ -316,9 +335,11 @@ impl Encodable for Asdf2 {
         }
         {
             let mut use_field = true;
-            version = self.1;
             if use_field {
-                self.1.encode(to, version, primitive_repr)?;
+                {
+                    self.1.encode(to, version, primitive_repr)?;
+                    version = self.1;
+                }
             }
         }
         Ok(())
@@ -343,7 +364,6 @@ impl Decodable for Asdf2 {
             };
             {
                 let mut use_field = true;
-                version = Version::decode(from, version, primitive_repr)?;
                 version = <Version as Decodable>::decode(from, version, primitive_repr)?;
             }
             Self(__self_0, version)
@@ -508,9 +528,11 @@ impl Encodable for EncodedVersionTuple {
     ) -> std::io::Result<()> {
         {
             let mut use_field = true;
-            version = self.0;
             if use_field {
-                (encode_major_version_u16)(&self.0, to, version, primitive_repr)?;
+                {
+                    (encode_major_version_u16)(&self.0, to, version, primitive_repr)?;
+                    version = self.0;
+                }
             }
         }
         Ok(())
@@ -525,11 +547,6 @@ impl Decodable for EncodedVersionTuple {
         Ok({
             {
                 let mut use_field = true;
-                version = (decode_major_version_u16)(
-                    &mut *from,
-                    version,
-                    primitive_repr,
-                )?;
                 version = (decode_major_version_u16)(
                     &mut *from,
                     version,
@@ -575,9 +592,16 @@ impl Encodable for EncodedVersionNamed {
     ) -> std::io::Result<()> {
         {
             let mut use_field = true;
-            version = self.version;
             if use_field {
-                (encode_major_version_u16)(&self.version, to, version, primitive_repr)?;
+                {
+                    (encode_major_version_u16)(
+                        &self.version,
+                        to,
+                        version,
+                        primitive_repr,
+                    )?;
+                    version = self.version;
+                }
             }
         }
         Ok(())
@@ -592,11 +616,6 @@ impl Decodable for EncodedVersionNamed {
         Ok({
             {
                 let mut use_field = true;
-                version = (decode_major_version_u16)(
-                    &mut *from,
-                    version,
-                    primitive_repr,
-                )?;
                 version = (decode_major_version_u16)(
                     &mut *from,
                     version,
@@ -678,7 +697,9 @@ fn round_trip_with_size<T: Encodable + Decodable + PartialEq + Debug>(
                     kind,
                     &*left_val,
                     &*right_val,
-                    ::core::option::Option::None,
+                    ::core::option::Option::Some(
+                        format_args!("encoded the wrong number of bytes"),
+                    ),
                 );
             }
         }
@@ -944,7 +965,7 @@ impl Decodable for Uiop {
         })
     }
 }
-struct Big {
+struct BindTest {
     a: u32,
     b: u32,
     c: u32,
@@ -958,7 +979,7 @@ struct Big {
     i: u32,
     j: u32,
 }
-impl Encodable for Big {
+impl Encodable for BindTest {
     fn encode(
         &self,
         to: &mut dyn std::io::Write,
@@ -1028,7 +1049,7 @@ impl Encodable for Big {
         Ok(())
     }
 }
-impl Decodable for Big {
+impl Decodable for BindTest {
     fn decode(
         from: &mut dyn std::io::Read,
         mut version: decent::Version,

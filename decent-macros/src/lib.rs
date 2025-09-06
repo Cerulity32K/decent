@@ -146,16 +146,16 @@ fn get_field_attribute_modifications(
                     ));
                 }
                 version_overridden = true;
-                let field_accessor = match field_accessor {
-                    Some(accessor) => accessor.clone(),
-                    None => match &decode_with {
-                        Some(expr) => quote! { (#expr)(&mut *from, version, primitive_repr)? },
-                        None => quote! { Version::decode(from, version, primitive_repr)? },
-                    },
-                };
+                // let field_accessor = match field_accessor {
+                //     Some(accessor) => accessor.clone(),
+                //     None => match &decode_with {
+                //         Some(expr) => quote! { (#expr)(&mut *from, version, primitive_repr)? },
+                //         None => quote! { Version::decode(from, version, primitive_repr)? },
+                //     },
+                // };
                 modifications = quote! {
                     #modifications
-                    version = #field_accessor;
+                    // version = #field_accessor;
                 }
             }
             _ => {}
@@ -187,12 +187,16 @@ fn create_struct_encode_body(data_struct: &DataStruct) -> syn::Result<TokenStrea
         let FieldAttributes {
             modifications,
             encode_with,
+            version_overridden,
             ..
         } = get_field_attribute_modifications(Some(&accessor), &field.attrs)?;
-        let encode = match encode_with {
+        let mut encode = match encode_with {
             Some(expr) => quote! { (#expr)(&#accessor, to, version, primitive_repr)?; },
             None => quote! { #accessor.encode(to, version, primitive_repr)?; },
         };
+        if version_overridden {
+            encode = quote! { { #encode version = #accessor } };
+        }
         encode_body = quote! {
             #encode_body
             {
@@ -403,11 +407,15 @@ fn create_enum_decode_body(
                             }
                         };
 
-                        let mut value = if version_overridden {
-                            quote! { version }
-                        } else {
-                            decode
-                        };
+                        let mut value = decode;
+                        if version_overridden {
+                            value = quote! { { version = #value; version } }
+                        }
+                        // let mut value = if version_overridden {
+                        //     quote! { version }
+                        // } else {
+                        //     decode
+                        // };
 
                         // TODO: defaulting customisation
                         if usage_is_conditional || true {
@@ -446,11 +454,15 @@ fn create_enum_decode_body(
                             }
                         };
 
-                        let mut value = if version_overridden {
-                            quote! { version }
-                        } else {
-                            decode
-                        };
+                        let mut value = decode;
+                        if version_overridden {
+                            value = quote! { { version = #value; version } }
+                        }
+                        // let mut value = if version_overridden {
+                        //     quote! { version }
+                        // } else {
+                        //     decode
+                        // };
 
                         if usage_is_conditional || true {
                             value = quote! {
