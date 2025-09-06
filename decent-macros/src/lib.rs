@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use decent::{PrimitiveRepr, Version};
 use proc_macro::TokenStream as RustTokenStream;
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{
     Attribute, Data, DataEnum, DataStruct, DeriveInput, Expr, Fields, Ident, LitInt,
@@ -46,6 +46,7 @@ struct FieldAttributes {
     modifications: TokenStream,
     usage_is_conditional: bool,
     version_overridden: bool,
+    bind_to_name: bool,
     encode_with: Option<Expr>,
     decode_with: Option<Expr>,
 }
@@ -57,20 +58,25 @@ fn get_field_attribute_modifications(
     let mut modifications = quote! { let mut use_field = true; };
     let mut usage_is_conditional = false;
     let mut version_overridden = false;
+    let mut bind_to_name = false;
     let mut encode_with = None;
     let mut decode_with = None;
 
     let mut seen_attributes = HashSet::new();
 
+    let mut see_attr = |attr: &str| {
+        if seen_attributes.contains(&attr[..]) {
+            panic!("attribute `{attr}` doubly-specified");
+        }
+        seen_attributes.insert("since");
+    };
+
     // let version_decoder = quote! { Version::decode(from, version, primitive_repr)? };
     for attribute in field_attributes {
         let attr = attribute.path().segments.last().unwrap().ident.to_string();
         match &attr[..] {
-            "since" if seen_attributes.contains(&"since") => {
-                panic!("attribute `since` doubly specified")
-            }
             "since" => {
-                seen_attributes.insert("since");
+                see_attr(&attr);
                 let Version(major, minor, patch) = attribute.parse_args_with(parse_version)?;
                 usage_is_conditional = true;
                 modifications = quote! {
@@ -78,17 +84,8 @@ fn get_field_attribute_modifications(
                     use_field &= version >= Version(#major, #minor, #patch);
                 };
             }
-            _ => {}
-        }
-    }
-    for attribute in field_attributes {
-        let attr = attribute.path().segments.last().unwrap().ident.to_string();
-        match &attr[..] {
-            "until" if seen_attributes.contains(&"until") => {
-                panic!("attribute `until` doubly specified")
-            }
             "until" => {
-                seen_attributes.insert("until");
+                see_attr(&attr);
                 let Version(major, minor, patch) = attribute.parse_args_with(parse_version)?;
                 usage_is_conditional = true;
                 modifications = quote! {
@@ -96,24 +93,22 @@ fn get_field_attribute_modifications(
                     use_field &= version < Version(#major, #minor, #patch);
                 };
             }
+            "bind" => {
+                see_attr(&attr);
+                bind_to_name = true;
+            }
             _ => {}
         }
     }
     for attribute in field_attributes {
         let attr = attribute.path().segments.last().unwrap().ident.to_string();
         match &attr[..] {
-            "decode_with" if seen_attributes.contains(&"decode_with") => {
-                panic!("attribute `decode_with` doubly specified")
-            }
             "decode_with" => {
-                seen_attributes.insert("decode_with");
+                see_attr(&attr);
                 decode_with = Some(attribute.parse_args::<Expr>()?);
             }
-            "encode_with" if seen_attributes.contains(&"encode_with") => {
-                panic!("attribute `encode_with` doubly specified")
-            }
             "encode_with" => {
-                seen_attributes.insert("encode_with");
+                see_attr(&attr);
                 encode_with = Some(attribute.parse_args::<Expr>()?);
             }
             _ => {}
@@ -122,11 +117,8 @@ fn get_field_attribute_modifications(
     for attribute in field_attributes {
         let attr = attribute.path().segments.last().unwrap().ident.to_string();
         match &attr[..] {
-            "override_repr" if seen_attributes.contains(&"override_repr") => {
-                panic!("attribute `override_repr` doubly specified")
-            }
             "override_repr" => {
-                seen_attributes.insert("override_repr");
+                see_attr(&attr);
                 let new_repr = match attribute.parse_args_with(parse_primitive_repr).unwrap() {
                     PrimitiveRepr::BigEndian => "BigEndian",
                     PrimitiveRepr::LittleEndian => "LittleEndian",
@@ -145,11 +137,8 @@ fn get_field_attribute_modifications(
     for attribute in field_attributes {
         let attr = attribute.path().segments.last().unwrap().ident.to_string();
         match &attr[..] {
-            "version" if seen_attributes.contains(&"version") => {
-                panic!("attribute `version` doubly specified")
-            }
             "version" => {
-                seen_attributes.insert("version");
+                see_attr(&attr);
                 if usage_is_conditional {
                     return Err(syn::Error::new(
                         attribute.span(),
@@ -160,7 +149,7 @@ fn get_field_attribute_modifications(
                 let field_accessor = match field_accessor {
                     Some(accessor) => accessor.clone(),
                     None => match &decode_with {
-                        Some(expr) => quote! { (#expr)(from, version, primitive_repr)? },
+                        Some(expr) => quote! { (#expr)(&mut *from, version, primitive_repr)? },
                         None => quote! { Version::decode(from, version, primitive_repr)? },
                     },
                 };
@@ -176,6 +165,7 @@ fn get_field_attribute_modifications(
         modifications,
         usage_is_conditional,
         version_overridden,
+        bind_to_name,
         encode_with,
         decode_with,
     });
@@ -254,7 +244,9 @@ fn create_enum_encode_body(
             Fields::Unit => quote! {},
         };
 
-        let encoded_discriminant = format!("(({discriminant} + {discriminant_offset}) as {discriminant_type})").parse::<TokenStream>()?;
+        let encoded_discriminant =
+            format!("(({discriminant} + {discriminant_offset}) as {discriminant_type})")
+                .parse::<TokenStream>()?;
         let mut variant_encode_body = quote! {
             #encoded_discriminant.encode(to, version, primitive_repr)?;
         };
@@ -296,8 +288,9 @@ fn create_enum_encode_body(
 }
 
 fn create_struct_decode_body(data_struct: &DataStruct) -> syn::Result<TokenStream> {
-    let mut field_decoders = quote! {};
-    for field in &data_struct.fields {
+    let mut field_movers = quote! {};
+    let mut binders = quote! {};
+    for (field_index, field) in data_struct.fields.iter().enumerate() {
         let field_type = &field.ty;
         let field_name = &field.ident;
 
@@ -305,20 +298,28 @@ fn create_struct_decode_body(data_struct: &DataStruct) -> syn::Result<TokenStrea
             modifications,
             usage_is_conditional,
             version_overridden,
+            bind_to_name,
             decode_with,
             ..
         } = get_field_attribute_modifications(None, &field.attrs)?;
-        let decode = match decode_with {
-            Some(expr) => quote! { (#expr)(from, version, primitive_repr)? },
-            None => quote! { <#field_type as Decodable>::decode(from, version, primitive_repr)? },
+
+        let (declaration, accessor) = if version_overridden {
+            (quote! {}, quote! { version })
+        } else if bind_to_name {
+            let name = field_name
+                .as_ref()
+                .expect("`bind` must be used on named fields");
+            (quote! { let #name }, quote! { #name })
+        } else {
+            (
+                format!("let __self_{field_index}").parse::<TokenStream>()?,
+                format!("__self_{field_index}").parse::<TokenStream>()?,
+            )
         };
 
-        let mut value = if version_overridden {
-            quote! { version }
-        } else {
-            quote! {
-                #decode
-            }
+        let mut value = match decode_with {
+            Some(expr) => quote! { (#expr)(&mut *from, version, primitive_repr)? },
+            None => quote! { <#field_type as Decodable>::decode(from, version, primitive_repr)? },
         };
 
         // TODO: defaulting customisation
@@ -332,22 +333,31 @@ fn create_struct_decode_body(data_struct: &DataStruct) -> syn::Result<TokenStrea
             }
         }
 
+        let field_mover;
         if field_name.is_some() {
-            value = quote! {
-                #field_name: { #modifications #value },
+            field_mover = quote! {
+                #field_name: #accessor,
             };
         } else {
-            value = quote! { { #modifications #value}, };
+            field_mover = quote! { #accessor, };
         }
 
-        field_decoders = quote! {
-            #field_decoders
-            #value
+        binders = quote! {
+            #binders
+            #declaration;
+            {
+                #modifications
+                #accessor = #value;
+            }
+        };
+        field_movers = quote! {
+            #field_movers
+            #field_mover
         }
     }
     Ok(match &data_struct.fields {
-        Fields::Named(_) => quote! { Ok(Self { #field_decoders }) },
-        Fields::Unnamed(_) => quote! { Ok(Self (#field_decoders)) },
+        Fields::Named(_) => quote! { Ok({#binders Self { #field_movers }}) },
+        Fields::Unnamed(_) => quote! { Ok({#binders Self (#field_movers)}) },
         Fields::Unit => quote! { Ok(Self) },
     })
 }
@@ -365,7 +375,8 @@ fn create_enum_decode_body(
             discriminant_offset = 0;
         }
         let offset_tokens = discriminant_offset.to_string().parse::<TokenStream>()?;
-        let pattern = quote! { __discriminant if __discriminant == (#discriminant) + #offset_tokens };
+        let pattern =
+            quote! { __discriminant if __discriminant == (#discriminant) + #offset_tokens };
         let arm;
         let variant_name = &variant.ident;
         if let Fields::Unit = variant.fields {
@@ -386,7 +397,7 @@ fn create_enum_decode_body(
                         let field_type = &field.ty;
                         let field_name = &field.ident;
                         let decode = match decode_with {
-                            Some(expr) => quote! { (#expr)(from, version, primitive_repr)? },
+                            Some(expr) => quote! { (#expr)(&mut *from, version, primitive_repr)? },
                             None => {
                                 quote! { <#field_type as Decodable>::decode(from, version, primitive_repr)? }
                             }
@@ -429,7 +440,7 @@ fn create_enum_decode_body(
 
                         let field_type = &field.ty;
                         let decode = match decode_with {
-                            Some(expr) => quote! { (#expr)(from, version, primitive_repr)? },
+                            Some(expr) => quote! { (#expr)(&mut *from, version, primitive_repr)? },
                             None => {
                                 quote! { <#field_type as Decodable>::decode(from, version, primitive_repr)? }
                             }
@@ -478,7 +489,7 @@ fn create_enum_decode_body(
 // TODO: `until` and `fixed_repr` field attributes
 #[proc_macro_derive(
     Binary,
-    attributes(since, until, override_repr, version, encode_with, decode_with)
+    attributes(since, until, override_repr, version, encode_with, decode_with, bind)
 )]
 pub fn decent(input: RustTokenStream) -> RustTokenStream {
     let input = parse_macro_input!(input as DeriveInput);

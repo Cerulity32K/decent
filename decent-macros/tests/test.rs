@@ -227,6 +227,32 @@ fn enums() {
     }
 }
 
+fn asdf<T>(thing: T) -> io::Result<()> {
+    Ok(())
+}
+
+#[derive(Binary)]
+struct Uiop {
+    #[encode_with(|_, _, _, _| asdf(self))]
+    nothing: (),
+}
+
+#[derive(Binary)]
+struct BindTest {
+    a: u32,
+    b: u32,
+    c: u32,
+    #[bind]
+    d: u32,
+    e: u32,
+    f: u32,
+    g: u32,
+    #[decode_with(|_, _, _| -> io::Result<u32> { Ok(d) })]
+    h: u32,
+    i: u32,
+    j: u32,
+}
+
 #[derive(Binary)]
 enum Asdf {
     A,
@@ -256,6 +282,19 @@ enum Asdf {
     Y,
     Z,
 }
+
+struct Vec2 {
+    x: f32,
+    y: f32,
+}
+// fn read(from: &mut dyn Read) {
+//     let __self_0 = f32::decode(from, version, primitive_repr);
+//     let __self_1 = f32::decode(from, version, primitive_repr);
+//     Vec2 {
+//         x: __self_0,
+//         y: __self_1,
+//     } 
+// }
 
 #[test]
 fn custom_encoded_version() {

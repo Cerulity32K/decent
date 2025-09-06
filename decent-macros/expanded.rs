@@ -253,21 +253,26 @@ impl Decodable for Asdf1 {
         mut version: decent::Version,
         primitive_repr: decent::PrimitiveRepr,
     ) -> std::io::Result<Self> {
-        Ok(Self {
-            version: {
+        Ok({
+            {
                 let mut use_field = true;
                 version = Version::decode(from, version, primitive_repr)?;
-                version
-            },
-            asdf: {
+                version = <Version as Decodable>::decode(from, version, primitive_repr)?;
+            }
+            let __self_1;
+            {
                 let mut use_field = true;
                 use_field &= version >= Version(1u64, 0u64, 0u64);
-                if use_field {
+                __self_1 = if use_field {
                     <u32 as Decodable>::decode(from, version, primitive_repr)?
                 } else {
                     Default::default()
-                }
-            },
+                };
+            }
+            Self {
+                version: version,
+                asdf: __self_1,
+            }
         })
     }
 }
@@ -325,24 +330,24 @@ impl Decodable for Asdf2 {
         mut version: decent::Version,
         primitive_repr: decent::PrimitiveRepr,
     ) -> std::io::Result<Self> {
-        Ok(
-            Self(
-                {
-                    let mut use_field = true;
-                    use_field &= version >= Version(1u64, 0u64, 0u64);
-                    if use_field {
-                        <u32 as Decodable>::decode(from, version, primitive_repr)?
-                    } else {
-                        Default::default()
-                    }
-                },
-                {
-                    let mut use_field = true;
-                    version = Version::decode(from, version, primitive_repr)?;
-                    version
-                },
-            ),
-        )
+        Ok({
+            let __self_0;
+            {
+                let mut use_field = true;
+                use_field &= version >= Version(1u64, 0u64, 0u64);
+                __self_0 = if use_field {
+                    <u32 as Decodable>::decode(from, version, primitive_repr)?
+                } else {
+                    Default::default()
+                };
+            };
+            {
+                let mut use_field = true;
+                version = Version::decode(from, version, primitive_repr)?;
+                version = <Version as Decodable>::decode(from, version, primitive_repr)?;
+            }
+            Self(__self_0, version)
+        })
     }
 }
 #[automatically_derived]
@@ -431,15 +436,20 @@ impl Decodable for Asdf4 {
         mut version: decent::Version,
         primitive_repr: decent::PrimitiveRepr,
     ) -> std::io::Result<Self> {
-        Ok(Self {
-            x: {
+        Ok({
+            let __self_0;
+            {
                 let mut use_field = true;
-                (npo_decode::<u32>)(from, version, primitive_repr)?
-            },
-            y: {
+                __self_0 = (npo_decode::<u32>)(&mut *from, version, primitive_repr)?;
+            }
+            let __self_1;
+            {
                 let mut use_field = true;
-                <Vec<i32> as Decodable>::decode(from, version, primitive_repr)?
-            },
+                __self_1 = <Vec<
+                    i32,
+                > as Decodable>::decode(from, version, primitive_repr)?;
+            }
+            Self { x: __self_0, y: __self_1 }
         })
     }
 }
@@ -512,13 +522,22 @@ impl Decodable for EncodedVersionTuple {
         mut version: decent::Version,
         primitive_repr: decent::PrimitiveRepr,
     ) -> std::io::Result<Self> {
-        Ok(
-            Self({
+        Ok({
+            {
                 let mut use_field = true;
-                version = (decode_major_version_u16)(from, version, primitive_repr)?;
-                version
-            }),
-        )
+                version = (decode_major_version_u16)(
+                    &mut *from,
+                    version,
+                    primitive_repr,
+                )?;
+                version = (decode_major_version_u16)(
+                    &mut *from,
+                    version,
+                    primitive_repr,
+                )?;
+            }
+            Self(version)
+        })
     }
 }
 #[automatically_derived]
@@ -570,12 +589,21 @@ impl Decodable for EncodedVersionNamed {
         mut version: decent::Version,
         primitive_repr: decent::PrimitiveRepr,
     ) -> std::io::Result<Self> {
-        Ok(Self {
-            version: {
+        Ok({
+            {
                 let mut use_field = true;
-                version = (decode_major_version_u16)(from, version, primitive_repr)?;
-                version
-            },
+                version = (decode_major_version_u16)(
+                    &mut *from,
+                    version,
+                    primitive_repr,
+                )?;
+                version = (decode_major_version_u16)(
+                    &mut *from,
+                    version,
+                    primitive_repr,
+                )?;
+            }
+            Self { version: version }
         })
     }
 }
@@ -877,6 +905,203 @@ fn enums() {
         round_trip(variant, Version::ZERO, PrimitiveRepr::Varint);
     }
 }
+fn asdf<T>(thing: T) -> io::Result<()> {
+    Ok(())
+}
+struct Uiop {
+    #[encode_with(|_, _, _, _|asdf(self))]
+    nothing: (),
+}
+impl Encodable for Uiop {
+    fn encode(
+        &self,
+        to: &mut dyn std::io::Write,
+        mut version: decent::Version,
+        primitive_repr: decent::PrimitiveRepr,
+    ) -> std::io::Result<()> {
+        {
+            let mut use_field = true;
+            if use_field {
+                (|_, _, _, _| asdf(self))(&self.nothing, to, version, primitive_repr)?;
+            }
+        }
+        Ok(())
+    }
+}
+impl Decodable for Uiop {
+    fn decode(
+        from: &mut dyn std::io::Read,
+        mut version: decent::Version,
+        primitive_repr: decent::PrimitiveRepr,
+    ) -> std::io::Result<Self> {
+        Ok({
+            let __self_0;
+            {
+                let mut use_field = true;
+                __self_0 = <() as Decodable>::decode(from, version, primitive_repr)?;
+            }
+            Self { nothing: __self_0 }
+        })
+    }
+}
+struct Big {
+    a: u32,
+    b: u32,
+    c: u32,
+    #[bind]
+    d: u32,
+    e: u32,
+    f: u32,
+    g: u32,
+    #[decode_with(|_, _, _|->io::Result<u32>{Ok(d)})]
+    h: u32,
+    i: u32,
+    j: u32,
+}
+impl Encodable for Big {
+    fn encode(
+        &self,
+        to: &mut dyn std::io::Write,
+        mut version: decent::Version,
+        primitive_repr: decent::PrimitiveRepr,
+    ) -> std::io::Result<()> {
+        {
+            let mut use_field = true;
+            if use_field {
+                self.a.encode(to, version, primitive_repr)?;
+            }
+        }
+        {
+            let mut use_field = true;
+            if use_field {
+                self.b.encode(to, version, primitive_repr)?;
+            }
+        }
+        {
+            let mut use_field = true;
+            if use_field {
+                self.c.encode(to, version, primitive_repr)?;
+            }
+        }
+        {
+            let mut use_field = true;
+            if use_field {
+                self.d.encode(to, version, primitive_repr)?;
+            }
+        }
+        {
+            let mut use_field = true;
+            if use_field {
+                self.e.encode(to, version, primitive_repr)?;
+            }
+        }
+        {
+            let mut use_field = true;
+            if use_field {
+                self.f.encode(to, version, primitive_repr)?;
+            }
+        }
+        {
+            let mut use_field = true;
+            if use_field {
+                self.g.encode(to, version, primitive_repr)?;
+            }
+        }
+        {
+            let mut use_field = true;
+            if use_field {
+                self.h.encode(to, version, primitive_repr)?;
+            }
+        }
+        {
+            let mut use_field = true;
+            if use_field {
+                self.i.encode(to, version, primitive_repr)?;
+            }
+        }
+        {
+            let mut use_field = true;
+            if use_field {
+                self.j.encode(to, version, primitive_repr)?;
+            }
+        }
+        Ok(())
+    }
+}
+impl Decodable for Big {
+    fn decode(
+        from: &mut dyn std::io::Read,
+        mut version: decent::Version,
+        primitive_repr: decent::PrimitiveRepr,
+    ) -> std::io::Result<Self> {
+        Ok({
+            let __self_0;
+            {
+                let mut use_field = true;
+                __self_0 = <u32 as Decodable>::decode(from, version, primitive_repr)?;
+            }
+            let __self_1;
+            {
+                let mut use_field = true;
+                __self_1 = <u32 as Decodable>::decode(from, version, primitive_repr)?;
+            }
+            let __self_2;
+            {
+                let mut use_field = true;
+                __self_2 = <u32 as Decodable>::decode(from, version, primitive_repr)?;
+            }
+            let d;
+            {
+                let mut use_field = true;
+                d = <u32 as Decodable>::decode(from, version, primitive_repr)?;
+            }
+            let __self_4;
+            {
+                let mut use_field = true;
+                __self_4 = <u32 as Decodable>::decode(from, version, primitive_repr)?;
+            }
+            let __self_5;
+            {
+                let mut use_field = true;
+                __self_5 = <u32 as Decodable>::decode(from, version, primitive_repr)?;
+            }
+            let __self_6;
+            {
+                let mut use_field = true;
+                __self_6 = <u32 as Decodable>::decode(from, version, primitive_repr)?;
+            }
+            let __self_7;
+            {
+                let mut use_field = true;
+                __self_7 = (|_, _, _| -> io::Result<u32> {
+                    Ok(d)
+                })(&mut *from, version, primitive_repr)?;
+            }
+            let __self_8;
+            {
+                let mut use_field = true;
+                __self_8 = <u32 as Decodable>::decode(from, version, primitive_repr)?;
+            }
+            let __self_9;
+            {
+                let mut use_field = true;
+                __self_9 = <u32 as Decodable>::decode(from, version, primitive_repr)?;
+            }
+            Self {
+                a: __self_0,
+                b: __self_1,
+                c: __self_2,
+                d: d,
+                e: __self_4,
+                f: __self_5,
+                g: __self_6,
+                h: __self_7,
+                i: __self_8,
+                j: __self_9,
+            }
+        })
+    }
+}
 enum Asdf {
     A,
     B,
@@ -1043,6 +1268,10 @@ impl Decodable for Asdf {
         }
     }
 }
+struct Vec2 {
+    x: f32,
+    y: f32,
+}
 extern crate test;
 #[rustc_test_marker = "custom_encoded_version"]
 #[doc(hidden)]
@@ -1052,9 +1281,9 @@ pub const custom_encoded_version: test::TestDescAndFn = test::TestDescAndFn {
         ignore: false,
         ignore_message: ::core::option::Option::None,
         source_file: "decent-macros/tests/test.rs",
-        start_line: 261usize,
+        start_line: 300usize,
         start_col: 4usize,
-        end_line: 261usize,
+        end_line: 300usize,
         end_col: 26usize,
         compile_fail: false,
         no_run: false,
