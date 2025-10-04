@@ -107,17 +107,13 @@ impl Decodable for TestEnum {
                     Self::Testa2({
                         let mut use_field = true;
                         let primitive_repr = decent::PrimitiveRepr::BigEndian;
-                        if use_field {
-                            {
-                                version = <Version as Decodable>::decode(
-                                    from,
-                                    version,
-                                    primitive_repr,
-                                )?;
-                                version
-                            }
-                        } else {
-                            Default::default()
+                        {
+                            version = <Version as Decodable>::decode(
+                                from,
+                                version,
+                                primitive_repr,
+                            )?;
+                            version
                         }
                     }),
                 )
@@ -142,17 +138,13 @@ impl Decodable for TestEnum {
                     test: {
                         let mut use_field = true;
                         let primitive_repr = decent::PrimitiveRepr::BigEndian;
-                        if use_field {
-                            {
-                                version = <Version as Decodable>::decode(
-                                    from,
-                                    version,
-                                    primitive_repr,
-                                )?;
-                                version
-                            }
-                        } else {
-                            Default::default()
+                        {
+                            version = <Version as Decodable>::decode(
+                                from,
+                                version,
+                                primitive_repr,
+                            )?;
+                            version
                         }
                     },
                 })
@@ -740,9 +732,9 @@ pub const unit: test::TestDescAndFn = test::TestDescAndFn {
         ignore: false,
         ignore_message: ::core::option::Option::None,
         source_file: "decent-macros/tests/test.rs",
-        start_line: 130usize,
+        start_line: 134usize,
         start_col: 4usize,
-        end_line: 130usize,
+        end_line: 134usize,
         end_col: 8usize,
         compile_fail: false,
         no_run: false,
@@ -763,9 +755,9 @@ pub const struct_with_vec: test::TestDescAndFn = test::TestDescAndFn {
         ignore: false,
         ignore_message: ::core::option::Option::None,
         source_file: "decent-macros/tests/test.rs",
-        start_line: 135usize,
+        start_line: 139usize,
         start_col: 4usize,
-        end_line: 135usize,
+        end_line: 139usize,
         end_col: 19usize,
         compile_fail: false,
         no_run: false,
@@ -816,9 +808,9 @@ pub const versions: test::TestDescAndFn = test::TestDescAndFn {
         ignore: false,
         ignore_message: ::core::option::Option::None,
         source_file: "decent-macros/tests/test.rs",
-        start_line: 149usize,
+        start_line: 153usize,
         start_col: 4usize,
-        end_line: 149usize,
+        end_line: 153usize,
         end_col: 12usize,
         compile_fail: false,
         no_run: false,
@@ -898,9 +890,9 @@ pub const enums: test::TestDescAndFn = test::TestDescAndFn {
         ignore: false,
         ignore_message: ::core::option::Option::None,
         source_file: "decent-macros/tests/test.rs",
-        start_line: 214usize,
+        start_line: 218usize,
         start_col: 4usize,
-        end_line: 214usize,
+        end_line: 218usize,
         end_col: 9usize,
         compile_fail: false,
         no_run: false,
@@ -1302,9 +1294,9 @@ pub const custom_encoded_version: test::TestDescAndFn = test::TestDescAndFn {
         ignore: false,
         ignore_message: ::core::option::Option::None,
         source_file: "decent-macros/tests/test.rs",
-        start_line: 300usize,
+        start_line: 304usize,
         start_col: 4usize,
-        end_line: 300usize,
+        end_line: 304usize,
         end_col: 26usize,
         compile_fail: false,
         no_run: false,
