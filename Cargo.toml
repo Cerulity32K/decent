@@ -13,5 +13,5 @@ version = "0.2.1"
 path = "decent"
 
 [workspace.dependencies.decent-macros]
-version = "0.2.0"
+version = "0.2.1"
 path = "decent-macros"

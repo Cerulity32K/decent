@@ -417,7 +417,7 @@ fn create_enum_decode_body(
                         // };
 
                         // TODO: defaulting customisation
-                        if usage_is_conditional || true {
+                        if usage_is_conditional {
                             value = quote! {
                                 if use_field {
                                     #value
