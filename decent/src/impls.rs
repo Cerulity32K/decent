@@ -31,6 +31,11 @@ use std::{
     time::Duration,
 };
 
+#[cfg(feature = "fixed")]
+use fixed::{
+    FixedI8, FixedI16, FixedI32, FixedI64, FixedI128, FixedU8, FixedU16, FixedU32, FixedU64,
+    FixedU128,
+};
 use num::{BigInt, BigUint};
 
 use crate::{
@@ -765,3 +770,36 @@ impl<T: Decodable> Decodable for RangeToInclusive<T> {
         })
     }
 }
+
+#[cfg(feature = "fixed")]
+macro_rules! fixed_impl {
+    ($($type:ident),+) => {
+        $(
+            impl<Frac> Encodable for $type<Frac> {
+                fn encode(
+                        &self,
+                        to: &mut dyn Write,
+                        version: Version,
+                        primitive_repr: PrimitiveRepr,
+                    ) -> io::Result<()> {
+                    self.to_bits().encode(to, version, primitive_repr)
+                }
+            }
+            impl<Frac> Decodable for $type<Frac> {
+                fn decode(
+                        from: &mut dyn Read,
+                        version: Version,
+                        primitive_repr: PrimitiveRepr,
+                    ) -> io::Result<Self> {
+                    Ok(Self::from_bits(Decodable::decode(from, version, primitive_repr)?))
+                }
+            }
+        )+
+    };
+}
+
+#[cfg(feature = "fixed")]
+fixed_impl!(
+    FixedU8, FixedI8, FixedU16, FixedI16, FixedU32, FixedI32, FixedU64, FixedI64, FixedU128,
+    FixedI128
+);
